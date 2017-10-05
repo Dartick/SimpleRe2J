@@ -12,7 +12,7 @@ SimpleRe2J 是一个从**设计模式**的角度出发而实现的正则引擎�
 
 * Capture，支持命名捕获及非捕获
 
-## Doc
+## Docs
 
 请参考java文档：
 
@@ -20,7 +20,7 @@ SimpleRe2J 是一个从**设计模式**的角度出发而实现的正则引擎�
 
 * [Matcher](http://docs.oracle.com/javase/8/docs/api/java/util/regex/Matcher.html)
 
-## Refer
+## Refers
 
 * [Regular Expression Matching Can Be Simple And Fast](https://swtch.com/~rsc/regexp/regexp1.html)
 
