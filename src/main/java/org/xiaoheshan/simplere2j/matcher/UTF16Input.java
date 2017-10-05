@@ -25,7 +25,7 @@ public class UTF16Input implements InputAdapter {
     @Override
     public int get(int offset) {
         int index = start + offset;
-        if (index < end) {
+        if (index >= start && index < end) {
             return charSequence.charAt(index);
         }
         return 0;
@@ -59,5 +59,10 @@ public class UTF16Input implements InputAdapter {
     @Override
     public boolean isEnd(int offset) {
         return start + offset >= end;
+    }
+
+    @Override
+    public String toString() {
+        return charSequence.toString();
     }
 }

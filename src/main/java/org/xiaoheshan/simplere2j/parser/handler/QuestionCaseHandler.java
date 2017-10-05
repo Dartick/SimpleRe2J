@@ -23,6 +23,9 @@ public class QuestionCaseHandler extends AbstractCaseHandler {
         source.skip();
         AstNode top = stack.pop();
         ClosureNode.Type type = ClosureNode.Type.getType(source.peek());
+        if (type != ClosureNode.Type.GREEDY) {
+            source.skip();
+        }
         stack.push(new QuestionNode(type, new AstNode[]{top}));
     }
 }

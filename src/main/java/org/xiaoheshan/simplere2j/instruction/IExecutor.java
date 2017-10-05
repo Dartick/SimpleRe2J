@@ -6,23 +6,25 @@ package org.xiaoheshan.simplere2j.instruction;
  */
 public interface IExecutor {
 
-    void execute(EpsilonInstruction instruction);
+    void execute(int sp, EpsilonInstruction instruction);
 
-    void execute(BranchInstruction instruction);
+    void execute(int sp, BranchInstruction instruction);
 
-    void execute(ClosureInstruction instruction);
+    void execute(int sp, ClosureInstruction instruction);
 
-    void execute(RuneInstruction instruction);
+    void execute(int sp, RuneInstruction instruction);
 
-    void execute(CharClassInstruction instruction);
+    void execute(int sp, CharClassInstruction instruction);
 
-    void execute(CaptureInstruction instruction);
+    void execute(int sp, CaptureStartInstruction instruction);
 
-    void execute(AssertionInstruction instruction);
+    void execute(int sp, CaptureEndInstruction instruction);
 
-    void execute(BoundaryInstruction instruction);
+    void execute(int sp, AssertionInstruction instruction);
 
-    void execute(EndInstruction instruction);
+    void execute(int sp, BoundaryInstruction instruction);
 
-    void execute(MatchInstruction instruction);
+    void execute(int sp, EndInstruction instruction);
+
+    void execute(int sp, MatchInstruction instruction);
 }

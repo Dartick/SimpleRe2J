@@ -23,6 +23,9 @@ public class PlusCaseHandler extends AbstractCaseHandler {
         source.skip();
         AstNode top = stack.pop();
         ClosureNode.Type type = ClosureNode.Type.getType(source.peek());
+        if (type != ClosureNode.Type.GREEDY) {
+            source.skip();
+        }
         stack.push(new PlusNode(type, new AstNode[]{top}));
     }
 

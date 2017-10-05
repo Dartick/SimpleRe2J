@@ -55,6 +55,9 @@ public class BraceLeftCaseHandler extends AbstractCaseHandler {
 
         AstNode top = stack.pop();
         ClosureNode.Type type = ClosureNode.Type.getType(source.peek());
+        if (type != ClosureNode.Type.GREEDY) {
+            source.skip();
+        }
         stack.push(new ClosureNode(min, max, type, new AstNode[]{top}));
     }
 }

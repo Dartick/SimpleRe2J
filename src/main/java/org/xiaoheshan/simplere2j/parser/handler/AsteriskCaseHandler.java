@@ -26,7 +26,9 @@ public class AsteriskCaseHandler extends AbstractCaseHandler {
         AstNode top = stack.pop();
 
         ClosureNode.Type type = ClosureNode.Type.getType(source.peek());
-
+        if (type != ClosureNode.Type.GREEDY) {
+            source.skip();
+        }
         stack.push(new StarNode(type, new AstNode[]{top}));
 
     }

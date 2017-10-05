@@ -20,6 +20,8 @@ public class Matcher {
 
     int last;
 
+    int oldLast;
+
     Map<String, Integer> namedGroups;
 
     Pattern pattern;
@@ -38,11 +40,29 @@ public class Matcher {
     }
 
     public boolean matches() {
-        machine.execute(this);
-        return first == input.start() && last == input.end();
+        return search(input.start(), VirtualMachine.ENDANCHOR);
     }
 
+    public boolean find() {
+        int nextSearchIndex = last;
+        if (nextSearchIndex == first)
+            nextSearchIndex++;
+        return search(nextSearchIndex, VirtualMachine.NOANCHOR);
+    }
 
+    boolean search(int from, int anchor) {
+        from        = from < 0 ? 0 : from;
+        this.first  = from;
+        this.oldLast = oldLast < 0 ? from : oldLast;
+        Arrays.fill(groups, -1);
+        groupCount = 0;
+        boolean result = machine.execute(this, anchor);
+        if (!result) {
+            this.first = -1;
+        }
+        this.oldLast = this.last;
+        return result;
+    }
 
     public String group() {
         return group(0);
@@ -56,8 +76,6 @@ public class Matcher {
         int group = namedGroups.get(name);
         return group(group);
     }
-
-
 
     public void reset() {
         Arrays.fill(groups, -1);

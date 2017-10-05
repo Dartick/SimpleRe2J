@@ -2,38 +2,24 @@ package org.xiaoheshan.simplere2j.instruction;
 
 /**
  * @author _Chf
- * @date 2017-09-28
+ * @date 2017-10-05
  */
-public class CaptureInstruction extends Instruction {
+abstract class CaptureInstruction extends Instruction {
 
     private Type type;
 
-    public CaptureInstruction(String name, Type type) {
+    public CaptureInstruction(String name, int[] operands, Type type) {
+        super(operands);
         this.type = type;
-        super.attach(name);
+        attach(name);
     }
 
     public String getName() {
-        return (String) super.getAttachment();
+        return (String) getAttachment();
     }
 
     public Type getType() {
         return type;
-    }
-
-    @Override
-    protected String opcodeString() {
-        return type.name;
-    }
-
-    @Override
-    protected String operandString() {
-        return getName();
-    }
-
-    @Override
-    public void accept(IExecutor executor) {
-        executor.execute(this);
     }
 
     public enum Type {
@@ -41,7 +27,7 @@ public class CaptureInstruction extends Instruction {
         NONE("none-capture"),
         NORMAL("normal-capture");
 
-        private String name;
+        protected String name;
 
         Type(String name) {
             this.name = name;

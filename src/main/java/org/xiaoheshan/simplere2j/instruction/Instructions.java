@@ -37,14 +37,27 @@ public final class Instructions {
         return new ClosureInstruction();
     }
 
-    public static Instruction newCapture(String name, CaptureNode.Type type) {
+    public static Instruction newCaptureStart(String name, int captureIndex,CaptureNode.Type type) {
         switch (type) {
             case NAME:
-                return new CaptureInstruction(name, CaptureInstruction.Type.NAME);
+                return new CaptureStartInstruction(name, new int[]{captureIndex}, CaptureInstruction.Type.NAME);
             case DEFAULT:
-                return new CaptureInstruction(name, CaptureInstruction.Type.NORMAL);
+                return new CaptureStartInstruction(name, new int[]{captureIndex}, CaptureInstruction.Type.NORMAL);
             case NONE:
-                return new CaptureInstruction(name, CaptureInstruction.Type.NONE);
+                return new CaptureStartInstruction(name, new int[]{captureIndex}, CaptureInstruction.Type.NONE);
+        }
+
+        throw new IllegalArgumentException("this is not a capture type");
+    }
+
+    public static Instruction newCaptureEnd(String name, int captureIndex,CaptureNode.Type type) {
+        switch (type) {
+            case NAME:
+                return new CaptureEndInstruction(name, new int[]{captureIndex}, CaptureInstruction.Type.NAME);
+            case DEFAULT:
+                return new CaptureEndInstruction(name, new int[]{captureIndex}, CaptureInstruction.Type.NORMAL);
+            case NONE:
+                return new CaptureEndInstruction(name, new int[]{captureIndex}, CaptureInstruction.Type.NONE);
         }
 
         throw new IllegalArgumentException("this is not a capture type");

@@ -74,11 +74,13 @@ public class Compiler implements AstVisitor {
     private VisitorHandler captureHandler = new BaseVisitorHandler() {
         @Override
         public void visitAfter(AstNode node) {
-            captureCount++;
             CaptureNode captureNode = (CaptureNode) node;
-            Instruction entranceInst = Instructions.newCapture(captureNode.getName(), captureNode.getType());
+            if (captureNode.getType() != CaptureNode.Type.NONE) {
+                captureCount++;
+            }
+            Instruction entranceInst = Instructions.newCaptureStart(captureNode.getName(), captureCount, captureNode.getType());
             int entrance = appendInstruction(entranceInst);
-            Instruction endInst = Instructions.newEnd();
+            Instruction endInst = Instructions.newCaptureEnd(captureNode.getName(), captureCount, captureNode.getType());
             int exit = appendInstruction(endInst);
 
             InstructionHolder holder = holders.pop().get(0);
@@ -86,6 +88,7 @@ public class Compiler implements AstVisitor {
             entranceInst.setNext(new int[]{holder.entrance});
 
             endInst.setNext(new int[]{holder.exit});
+
             Instruction instruction = instructions.get(holder.exit);
             instruction.setNext(new int[]{exit});
 

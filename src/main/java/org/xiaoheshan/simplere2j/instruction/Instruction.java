@@ -49,7 +49,7 @@ public abstract class Instruction {
 
     protected abstract String opcodeString();
     protected abstract String operandString();
-    public abstract void accept(IExecutor executor);
+    public abstract void accept(int sp, IExecutor executor);
 
     public enum Opcode {
         START,

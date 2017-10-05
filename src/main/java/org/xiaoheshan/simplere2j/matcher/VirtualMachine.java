@@ -11,208 +11,255 @@ import java.util.*;
  */
 public class VirtualMachine {
 
-    private boolean matched;
     private ExecuteContext context = new ExecuteContext();
     private InstExecutor instExecutor = new InstExecutor();
 
-    private Matcher matcher;
-    private InputAdapter input;
-    private Program program;
+    static final int NOANCHOR = 0;
+    static final int ENDANCHOR = 1;
 
     VirtualMachine() {
-        this.matched = false;
     }
 
-    public boolean execute(Matcher matcher) {
+    public boolean execute(Matcher matcher, int anchor) {
 
-        this.matcher = matcher;
-        this.input = matcher.input;
-        this.program = matcher.pattern.getProgram();
-        matcher.first = matcher.last + 1;
-        matcher.groups[0] = matcher.first;
-        matcher.groupCount++;
-        ExecuteThread thread = new ExecuteThread(matcher.first , program.getInstructions()[program.getStart()]);
+        initContext(matcher, anchor);
 
-        context.threadStack.push(thread);
-
-        while (!context.threadStack.isEmpty()) {
-            if (matched) {
-                return matched;
-            }
-            ExecuteThread currentThread = context.threadStack.peek();
-            currentThread.inst.accept(instExecutor);
+        switch (context.acceptMode) {
+            case NOANCHOR:
+                executeNoAnchor();
+                break;
+            case ENDANCHOR:
+                executeEndAnchor();
+                break;
         }
 
-        boolean result = matched;
-        clear();
+        if (!context.matched) {
+            context.matcher.last = context.matcher.first;
+        }
+
+        boolean result = context.matched;
+
+        clearContext();
 
         return result;
     }
 
-    private void clear() {
-        this.context.threadStack.clear();
-        this.context.instStack.clear();
-        this.context.captureHits.clear();
-        this.matched = false;
-        this.matcher = null;
-        this.input = null;
-        this.program = null;
-    }
+    private void executeEndAnchor() {
+        context.matcher.groups[0] = context.matcher.first;
+        context.matcher.groupCount++;
+        ExecuteThread thread = new ExecuteThread(context.matcher.first,
+                context.program.getInstructions()[context.program.getStart()]);
 
-    private void advance(Instruction instruction, int advance) {
-        ExecuteThread thread = context.threadStack.pop();
-        for (int next : instruction.getNext()) {
-            Instruction nextInst = program.getInstructions()[next];
-            context.threadStack.push(new ExecuteThread(thread.pc + advance, nextInst));
+        context.threadStack.push(thread);
+
+        while (!context.matched && !context.threadStack.isEmpty()) {
+            ExecuteThread currentThread = context.threadStack.peek();
+            currentThread.inst.accept(currentThread.sp, instExecutor);
         }
     }
 
-    private boolean isOutOfInput(int pc) {
-        return input.isEnd(pc);
+    private void executeNoAnchor() {
+        context.matcher.groups[0] = context.matcher.first;
+        context.matcher.groupCount++;
+        ExecuteThread thread = new ExecuteThread(context.matcher.first,
+                context.program.getInstructions()[context.program.getStart()]);
+
+        context.threadStack.push(thread);
+
+        while (!context.matched && !context.input.isEnd(context.matcher.first)) {
+            if (context.threadStack.isEmpty()) {
+                context.matcher.first++;
+                context.matcher.groups[0] = context.matcher.first;
+                ExecuteThread nextThread = new ExecuteThread(context.matcher.first,
+                        context.program.getInstructions()[context.program.getStart()]);
+
+                context.threadStack.push(nextThread);
+            }
+            ExecuteThread currentThread = context.threadStack.peek();
+            currentThread.inst.accept(currentThread.sp, instExecutor);
+        }
     }
 
-    private void failure() {
+    private void initContext(Matcher matcher, int anchor) {
+        this.context.matched = false;
+        this.context.matcher = matcher;
+        this.context.input = matcher.input;
+        this.context.program = matcher.pattern.getProgram();
+        this.context.acceptMode = anchor;
+    }
+
+    private void clearContext() {
+        this.context.threadStack.clear();
+        this.context.matched = false;
+        this.context.matcher = null;
+        this.context.input = null;
+        this.context.program = null;
+        this.context.acceptMode = NOANCHOR;
+    }
+
+    private void advance(int sp, Instruction instruction, int advance) {
+        ExecuteThread thread = context.threadStack.pop();
+        for (int next : instruction.getNext()) {
+            Instruction nextInst = context.program.getInstructions()[next];
+            context.threadStack.push(new ExecuteThread(sp + advance, nextInst));
+        }
+    }
+
+    private void dead() {
         context.threadStack.pop();
     }
 
-    private ExecuteThread currentThread() {
-        return context.threadStack.peek();
+    private boolean isOutOfInput(int sp) {
+        return context.input.isEnd(sp);
     }
 
     class ExecuteContext {
-        Deque<Instruction> instStack = new LinkedList<Instruction>();
+        Matcher matcher;
+        InputAdapter input;
+        Program program;
+        int acceptMode = NOANCHOR;
+        boolean matched = false;
         Deque<ExecuteThread> threadStack = new LinkedList<ExecuteThread>();
-        Map<CaptureInstruction, CaptureHolder> captureHits = new HashMap<CaptureInstruction, CaptureHolder>();
-    }
-
-    class CaptureHolder {
-        int from;
-        int captureIndex;
-
-        CaptureHolder(int from, int captureIndex) {
-            this.from = from;
-            this.captureIndex = captureIndex;
-        }
     }
 
     class ExecuteThread {
-        int pc;
+        int sp;
         Instruction inst;
 
-        ExecuteThread(int pc, Instruction inst) {
-            this.pc = pc;
+        ExecuteThread(int sp, Instruction inst) {
+            this.sp = sp;
             this.inst = inst;
         }
 
         @Override
         public String toString() {
             return "ExecuteThread{" +
-                    "pc=" + pc +
+                    "sp=" + sp +
                     ", inst=" + inst +
                     '}';
         }
     }
 
-
-
     class InstExecutor implements IExecutor {
 
         @Override
-        public void execute(EpsilonInstruction instruction) {
-            advance(instruction, 0);
+        public void execute(int sp, EpsilonInstruction instruction) {
+            advance(sp, instruction, 0);
         }
 
         @Override
-        public void execute(BranchInstruction instruction) {
-            advance(instruction, 0);
+        public void execute(int sp, BranchInstruction instruction) {
+            advance(sp, instruction, 0);
         }
 
         @Override
-        public void execute(ClosureInstruction instruction) {
-            advance(instruction, 0);
+        public void execute(int sp, ClosureInstruction instruction) {
+            advance(sp, instruction, 0);
         }
 
         @Override
-        public void execute(RuneInstruction instruction) {
-            int pc = currentThread().pc;
+        public void execute(int sp, RuneInstruction instruction) {
             int[] operands = instruction.getOperands();
             for (int i = 0; i < operands.length; i++) {
-                if (isOutOfInput(pc+i) || operands[i] != input.get(pc+i)) {
-                    failure();
+                if (isOutOfInput(sp+i) || operands[i] != context.input.get(sp+i)) {
+                    dead();
                     return;
                 }
             }
-            advance(instruction, operands.length);
+            advance(sp, instruction, operands.length);
         }
 
         @Override
-        public void execute(CharClassInstruction instruction) {
-            int pc = currentThread().pc;
+        public void execute(int sp, CharClassInstruction instruction) {
             @SuppressWarnings("unchecked")
             Set<Integer> charClass = (Set<Integer>) instruction.getAttachment();
-            if (isOutOfInput(pc) || !charClass.contains(input.get(pc))) {
-                failure();
+            if (isOutOfInput(sp) || !charClass.contains(context.input.get(sp))) {
+                dead();
                 return;
             }
-            advance(instruction, 1);
+            advance(sp, instruction, 1);
         }
 
         @Override
-        public void execute(CaptureInstruction instruction) {
-            int pc = currentThread().pc;
-            CaptureHolder holder = context.captureHits.get(instruction);
-            if (holder == null) {
-                context.captureHits.put(instruction, new CaptureHolder(pc, matcher.groupCount));
-                matcher.groupCount++;
+        public void execute(int sp, CaptureStartInstruction instruction) {
+            int captureIndex = instruction.getOperands()[0];
+            switch (instruction.getType()) {
+                case NAME:
+                    context.matcher.groups[captureIndex * 2] = sp;
+                    context.matcher.namedGroups.put(instruction.getName(), captureIndex);
+                    break;
+                case NORMAL:
+                    context.matcher.groups[captureIndex * 2] = sp;
+                    break;
+                case NONE:
+                    break;
             }
-            else {
-                holder.from = pc;
+            advance(sp, instruction, 0);
+        }
+
+        @Override
+        public void execute(int sp, CaptureEndInstruction instruction) {
+            int captureIndex = instruction.getOperands()[0];
+            switch (instruction.getType()) {
+                case NAME:
+                    context.matcher.groups[captureIndex * 2 + 1] = sp;
+                    context.matcher.namedGroups.put(instruction.getName(), captureIndex);
+                    break;
+                case NORMAL:
+                    context.matcher.groups[captureIndex * 2 + 1] = sp;
+                    break;
+                case NONE:
+                    break;
             }
-            context.instStack.push(instruction);
-            advance(instruction, 0);
+            advance(sp, instruction, 0);
         }
 
         @Override
-        public void execute(AssertionInstruction instruction) {
+        public void execute(int sp, AssertionInstruction instruction) {
+
         }
 
         @Override
-        public void execute(BoundaryInstruction instruction) {
-        }
-
-        @Override
-        public void execute(EndInstruction instruction) {
-            int pc = currentThread().pc;
-            if (context.instStack.isEmpty()) {
-                advance(instruction, 0);
-                return;
+        public void execute(int sp, BoundaryInstruction instruction) {
+            switch (instruction.getType()) {
+                case BEGIN_LINE:
+                    if (context.input.start() != sp) {
+                        dead();
+                        return;
+                    }
+                    break;
+                case END_LINE_BOUNDARY:
+                    if (context.input.end() != sp) {
+                        dead();
+                        return;
+                    }
+                    break;
             }
-            Instruction lastInst = context.instStack.peek();
-            if (lastInst instanceof CaptureInstruction) {
-                CaptureInstruction captureInstruction = (CaptureInstruction) lastInst;
-                CaptureHolder holder = context.captureHits.get(captureInstruction);
-                switch (captureInstruction.getType()) {
-                    case NORMAL:
-                        matcher.groups[holder.captureIndex *2] = holder.from;
-                        matcher.groups[holder.captureIndex *2 + 1] = pc;
-                        break;
-                    case NAME:
-                        matcher.groups[holder.captureIndex *2] = holder.from;
-                        matcher.groups[holder.captureIndex *2 + 1] = pc;
-                        matcher.namedGroups.put(captureInstruction.getName(), holder.from);
-                    case NONE:
-                        break;
-                }
-                context.instStack.pop();
-            }
-            advance(instruction, 0);
+            advance(sp, instruction, 0);
         }
 
         @Override
-        public void execute(MatchInstruction instruction) {
-            matched = true;
-            matcher.last = currentThread().pc - 1;
-            matcher.groups[1] = currentThread().pc;
+        public void execute(int sp, EndInstruction instruction) {
+        }
+
+        @Override
+        public void execute(int sp, MatchInstruction instruction) {
+            switch (context.acceptMode) {
+                case NOANCHOR:
+                    context.matched = true;
+                    context.matcher.last = sp - 1;
+                    context.matcher.groups[1] = sp;
+                    break;
+                case ENDANCHOR:
+                    if (context.input.isEnd(sp)) {
+                        context.matched = true;
+                        context.matcher.last = sp - 1;
+                        context.matcher.groups[1] = sp;
+                    }else {
+                        dead();
+                    }
+                    break;
+            }
         }
 
     }

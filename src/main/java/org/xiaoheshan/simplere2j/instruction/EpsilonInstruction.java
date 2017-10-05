@@ -7,8 +7,8 @@ package org.xiaoheshan.simplere2j.instruction;
 public class EpsilonInstruction extends Instruction {
 
     @Override
-    public void accept(IExecutor executor) {
-        executor.execute(this);
+    public void accept(int sp, IExecutor executor) {
+        executor.execute(sp, this);
     }
 
     @Override
